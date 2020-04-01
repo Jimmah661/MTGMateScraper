@@ -7,7 +7,7 @@ import {
   ScrollView,
   StyleSheet,
 } from 'react-native';
-const cheerio = require('cheerio-without-node-native');
+const cheerio = require('react-native-cheerio');
 
 function DisplayCards({cardlist}) {
   if (cardlist.length === 0) {
