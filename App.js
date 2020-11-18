@@ -1,5 +1,5 @@
-import React, {useState} from 'react';
-import {AppState, Text, View} from 'react-native';
+import React, {useState, useEffect} from 'react';
+import {View} from 'react-native';
 import {
   Button,
   TextInput,
@@ -12,9 +12,30 @@ import Header from './components/header';
 import ThemeModal from './components/themeModal';
 const cheerio = require('react-native-cheerio');
 import {themes} from './utilities/themes';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const App = () => {
-  const [selectedTheme, setSelectedTheme] = useState(themes.goku);
+  // Theme is defaulted to default
+  const [selectedTheme, setSelectedTheme] = useState(themes.default);
+
+  // This useEffect function will set the app theme on load
+  useEffect(() => {
+    async function setThemeOnLoad() {
+      // Running an storage check to see if the app has been loaded before and what the chosen theme is
+      const values = await AsyncStorage.multiGet([
+        'MtGMS_loadedOnce', // ['MtGMS_loadedOnce', 'true']
+        'MtGMS_selectedTheme', // ['MtGMS_selectedTheme', `${themeName}`]
+      ]);
+      values[0][1] // 'true' or null
+        ? setSelectedTheme(themes[values[1][1]]) // if it returns a value then set the theme
+        : await AsyncStorage.multiSet([
+            // if it does not return a value then set the theme to the default
+            ['MtGMS_loadedOnce', 'true'],
+            ['MtGMS_selectedTheme', 'default'],
+          ]);
+    }
+    setThemeOnLoad();
+  }, []);
 
   // This is the state for the list of cards to display
   // When the app is loaded it is originally blank, searching a card name will fill it
@@ -36,14 +57,19 @@ const App = () => {
         'https://www.mtgmate.com.au/cards/search?utf8=%E2%9C%93&q=' +
         card +
         '&button=';
+      // Turn the provided string into a proper URL, replacing spaces and such
       const uri = encodeURI(searchUrl);
+      // Fetch the data from the URL
       const response = await fetch(uri);
+      //Extract the webpage into a string
       const htmlString = await response.text();
+      // Pass the string into cheerio to work on
       const $ = cheerio.load(htmlString);
+      // Extract the items with class .magic-card into an array
       const cardsOutput = $('.magic-card');
       let i;
       let newCard = [];
-      // The for loop condition is a little messed up because there are 2 tables of data that are actually generated in the HTML
+      // The for loop condition is a little messed up because there are 2 tables of data that are actually generated in the MTGMate HTML
       // By starting at halfway through the length we skip the first table that seems to have dodgy data in it anyway
       for (i = cardsOutput.length / 2; i < cardsOutput.length; i++) {
         newCard.push({
@@ -75,7 +101,6 @@ const App = () => {
           </Modal>
         </Portal>
         <Header showModal={showModal} />
-        <Text>{AppState.currentState}</Text>
         <TextInput
           mode="outlined"
           label="Card"
